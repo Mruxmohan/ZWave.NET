@@ -143,7 +143,13 @@ public enum CommandClassId : byte
 
     Clock = 0x81,
     Hail = 0x82,
+
+    /// <summary>
+    /// The Wake Up Command Class allows a battery-powered device to notify another device (always listening), that it is awake
+    /// and ready to receive any queued commands.
+    /// </summary>
     WakeUp = 0x84,
+
     Association = 0x85,
 
     /// <summary>

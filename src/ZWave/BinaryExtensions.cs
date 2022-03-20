@@ -84,6 +84,26 @@ internal static class BinaryExtensions
         }
     }
 
+    public static void WriteBytesBE(this uint value, Span<byte> destination)
+    {
+        if (destination.Length != sizeof(uint))
+        {
+            throw new ArgumentException($"Destination must be of length {sizeof(uint)}");
+        }
+
+        if (!BitConverter.TryWriteBytes(destination, value))
+        {
+            // This really should never happen.
+            throw new InvalidOperationException($"Value {value} could not be converted to bytes.");
+        }
+
+        // BitConverter uses the endianness of the machine, so figure out if we have to reverse the bytes.
+        if (BitConverter.IsLittleEndian)
+        {
+            destination.Reverse();
+        }
+    }
+
     public static int ToInt32BE(this ReadOnlySpan<byte> bytes)
     {
         if (bytes.Length > sizeof(int))
