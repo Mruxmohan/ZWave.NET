@@ -146,14 +146,19 @@ public sealed class AntiTheftCommandClass : CommandClass<AntiTheftCommand>
             var endOffset = magicCode.Length + 1;
             magicCode[0..].CopyTo(commandParameters[1..endOffset++]);
 
+            // Manufacturer id must be set to 0x00 by sending node if state field is set to 0
             var startOffset = endOffset++;
             Span<byte> manufacturerBytes = stackalloc byte[2];
-            manufacturerId.WriteBytesBE(manufacturerBytes);
+            if (state)
+            {
+                manufacturerId.WriteBytesBE(manufacturerBytes);
+            }
+
             manufacturerBytes.CopyTo(commandParameters[startOffset..endOffset++]);
 
+            // Hint must be omitted if hint length is set to 0
             startOffset = endOffset;
             commandParameters[startOffset] = (byte)hint.Length;
-
             if (hint.Length > 0)
             {
                 startOffset = endOffset + 1;
@@ -165,6 +170,16 @@ public sealed class AntiTheftCommandClass : CommandClass<AntiTheftCommand>
             {
                 startOffset = endOffset++ + 1;
                 Span<byte> allianceBytes = stackalloc byte[2];
+                if (state)
+                {
+                    if (allianceLockingEntityId == 0)
+                    {
+                        throw new ArgumentException("Alliance locking entity id must not be set to zero for non-zero state.");
+                    }
+
+                    allianceLockingEntityId?.WriteBytesBE(allianceBytes);
+                }
+
                 allianceBytes.CopyTo(commandParameters[startOffset..endOffset]);
             }
 
@@ -215,16 +230,20 @@ public sealed class AntiTheftCommandClass : CommandClass<AntiTheftCommand>
         /// Z-Wave manufacturer id of the company's product that has locked the device.
         /// </summary>
         public ushort ManufacturerId => Frame.CommandParameters.Length > 2
-            ? Frame.CommandParameters.Span[1..2].ToUInt16BE()
+            ? ProtectionStatus == AntiTheftProtectionStatus.Unlocked
+                ? (ushort)0x00
+                : Frame.CommandParameters.Span[1..2].ToUInt16BE()
             : throw new ArgumentException("Two bytes must be allocated for the manufacturer id.");
 
         /// <summary>
         /// Indicates the length, in range [1, 10], of the hint in bytes.
         /// </summary>
         public int HintLength => Frame.CommandParameters.Length > 3
-            ? Frame.CommandParameters.Span[3].ToInt8() is >= 0 and <= 10
-                ? Frame.CommandParameters.Span[3].ToInt8()
-                : throw new ArgumentException("Values for hint length must fall into the range [0, 10].")
+            ? ProtectionStatus == AntiTheftProtectionStatus.Unlocked
+                ? 0
+                : Frame.CommandParameters.Span[3].ToInt8() is >= 0 and <= 10
+                    ? Frame.CommandParameters.Span[3].ToInt8()
+                    : throw new ArgumentException("Values for hint length must fall into the range [0, 10].")
             : throw new ArgumentException("Not enough bytes allocated for hint length");
 
         /// <summary>
@@ -238,7 +257,9 @@ public sealed class AntiTheftCommandClass : CommandClass<AntiTheftCommand>
         /// Unique id for the entity that has locked the device.
         /// </summary>
         public ushort? AllianceLockingEntityId => _version >= 3 && Frame.CommandParameters.Length > HintLength + 6
-            ? Frame.CommandParameters.Span.Slice(HintLength + 4, 2).ToUInt16BE()
+            ? ProtectionStatus == AntiTheftProtectionStatus.Unlocked
+                ? (ushort)0x00
+                : Frame.CommandParameters.Span.Slice(HintLength + 4, 2).ToUInt16BE()
             : null;
     }
 }
