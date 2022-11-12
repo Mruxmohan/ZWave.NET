@@ -136,6 +136,8 @@ internal sealed class ZWaveSerialPortCoordinator : IAsyncDisposable
                             case FrameType.NAK:
                             case FrameType.CAN:
                             {
+                                _logger.LogSerialApiFrameReceived(frame);
+
                                 if (_frameDeliveryResultTaskSource != null)
                                 {
                                     _frameDeliveryResultTaskSource.SetResult(frame.Type == FrameType.ACK);
@@ -154,6 +156,8 @@ internal sealed class ZWaveSerialPortCoordinator : IAsyncDisposable
 
                                 if (dataFrame.IsChecksumValid())
                                 {
+                                    _logger.LogSerialApiDataFrameReceived(dataFrame);
+
                                     // Acknowledge any valid request immediately.
                                     SendFrame(Frame.ACK);
 
@@ -161,7 +165,7 @@ internal sealed class ZWaveSerialPortCoordinator : IAsyncDisposable
                                 }
                                 else
                                 {
-                                    _logger.LogSerialApiInvalidDataFrame(dataFrame);
+                                    _logger.LogSerialApiInvalidDataFrameReceived(dataFrame);
 
                                     // INS12350 5.4.6:
                                     //   Data frame MUST be considered invalid if it is received with an invalid checksum.

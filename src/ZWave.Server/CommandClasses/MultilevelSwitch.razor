@@ -1,0 +1,226 @@
+﻿@using ZWave.CommandClasses
+
+@inherits CommandClassComponentBase
+
+<Error Message="@ErrorMessage" Exception="@ErrorException" />
+
+@if (CommandClass != null)
+{
+    <table class="table table-striped">
+        <tbody>
+            @if (CommandClass.State.HasValue)
+            {
+                MultilevelSwitchState state = CommandClass.State.Value;
+
+                <tr>
+                    <th scope="row">Current Value</th>
+                    <td>@state.CurrentValue.Value</td>
+                </tr>
+
+                @if (state.TargetValue.HasValue)
+                {
+                    <tr>
+                        <th scope="row">Target Value</th>
+                        <td>@state.TargetValue.Value</td>
+                    </tr>
+                }
+
+                @if (state.Duration.HasValue)
+                {
+                    <tr>
+                        <th scope="row">Duration</th>
+                        <td>@(state.Duration.Value.Duration?.ToString("c") ?? "Unknown")</td>
+                    </tr>
+                }
+            }
+
+            @if (CommandClass.SwitchType.HasValue)
+            {
+                <tr>
+                    <th scope="row">Switch type</th>
+                    <td>@CommandClass.SwitchType.Value</td>
+                </tr>
+            }
+        </tbody>
+
+        @if (CommandClass.IsCommandSupported(MultilevelSwitchCommand.Get).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetAsync">Get</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(MultilevelSwitchCommand.SupportedGet).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get Supported</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetSupportedAsync">Get Supported</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(MultilevelSwitchCommand.Set).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Set</th>
+                </tr>
+                <tr>
+                    <th scope="row">Value</th>
+                    <td>
+                        <input type="number" min="0" max="100" @bind="_setValue" />
+                    </td>
+                </tr>
+                @if (CommandClass.Version >= 2)
+                {
+                    <tr>
+                        <th scope="row">Duration</th>
+                        <td>
+                            <input type="number" min="@byte.MinValue" max="@byte.MaxValue" @bind="_setDuration" />
+                        </td>
+                    </tr>
+                }
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="SetAsync">Set</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(MultilevelSwitchCommand.StartLevelChange).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Start Level Change</th>
+                </tr>
+                <tr>
+                    <th scope="row">Direction</th>
+                    <td>
+                        <div class="form-check form-check-inline">
+                          <input class="form-check-input"
+                                 type="radio"
+                                 name="startLevelChangeDirection"
+                                 id="startLevelChangeDirectionUp"
+                                 checked
+                                 @onchange="@(() => { _startLevelChangeDirection = MultilevelSwitchChangeDirection.Up; })">
+                          <label class="form-check-label" for="startLevelChangeDirectionUp">
+                            Up
+                          </label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                          <input class="form-check-input"
+                                 type="radio"
+                                 name="startLevelChangeDirection"
+                                 id="startLevelChangeDirectionDown"
+                                 @onchange="@(() => { _startLevelChangeDirection = MultilevelSwitchChangeDirection.Down; })">
+                          <label class="form-check-label" for="startLevelChangeDirectionDown">
+                            Down
+                          </label>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Start Level</th>
+                    <td>
+                        <input type="number" min="0" max="100" @bind="_startLevelChangeStartLevel" />
+                    </td>
+                </tr>
+                @if (CommandClass.Version >= 2)
+                {
+                    <tr>
+                        <th scope="row">Duration</th>
+                        <td>
+                            <input type="number" min="@byte.MinValue" max="@byte.MaxValue" @bind="_startLevelChangeDuration" />
+                        </td>
+                    </tr>
+                }
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="StartLevelChangeAsync">Start Level Change</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(MultilevelSwitchCommand.StopLevelChange).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Stop Level Change</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="StopLevelChangeAsync">Stop Level Change</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+    </table>
+}
+
+@code {
+    // Set
+    private int _setValue;
+    private byte? _setDuration;
+
+    // StartLevelChange
+    private MultilevelSwitchChangeDirection _startLevelChangeDirection;
+    private int? _startLevelChangeStartLevel;
+    private byte? _startLevelChangeDuration;
+
+    [Parameter]
+    public MultilevelSwitchCommandClass? CommandClass { get; set; }
+
+    private async Task GetAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetAsync(CancellationToken.None),
+            nameof(CommandClass.GetAsync));
+
+    private async Task GetSupportedAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetSupportedAsync(CancellationToken.None),
+            nameof(CommandClass.GetSupportedAsync));
+
+    private async Task SetAsync()
+        => await RunSafelyAsync(
+            async () =>
+            {
+                var value = new GenericValue(_setValue);
+                DurationSet? duration = _setDuration.HasValue ? new DurationSet(_setDuration.Value) : null;
+                await CommandClass!.SetAsync(value, duration, CancellationToken.None);
+            },
+            nameof(CommandClass.SetAsync));
+
+    private async Task StartLevelChangeAsync()
+        => await RunSafelyAsync(
+            async () =>
+            {
+                GenericValue? startLevel = _startLevelChangeStartLevel.HasValue ? new GenericValue(_startLevelChangeStartLevel.Value) : null;
+                DurationSet? duration = _startLevelChangeDuration.HasValue ? new DurationSet(_startLevelChangeDuration.Value) : null;
+                await CommandClass!.StartLevelChangeAsync(_startLevelChangeDirection, startLevel, duration, CancellationToken.None);
+            },
+            nameof(CommandClass.StartLevelChangeAsync));
+
+    private async Task StopLevelChangeAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.StopLevelChangeAsync(CancellationToken.None),
+            nameof(CommandClass.StopLevelChangeAsync));
+}

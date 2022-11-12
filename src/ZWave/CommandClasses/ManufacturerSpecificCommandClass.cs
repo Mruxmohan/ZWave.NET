@@ -104,7 +104,7 @@ public sealed class ManufacturerSpecificCommandClass : CommandClass<Manufacturer
         return reportCommand.DeviceId;
     }
 
-    protected override async Task InterviewCoreAsync(CancellationToken cancellationToken)
+    internal override async Task InterviewAsync(CancellationToken cancellationToken)
     {
         _ = await GetAsync(cancellationToken).ConfigureAwait(false);
 

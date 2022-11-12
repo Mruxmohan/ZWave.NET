@@ -162,7 +162,7 @@ public sealed class ColorSwitchCommandClass : CommandClass<ColorSwitchCommand>
         await SendCommandAsync(command, cancellationToken).ConfigureAwait(false);
     }
 
-    protected override async Task InterviewCoreAsync(CancellationToken cancellationToken)
+    internal override async Task InterviewAsync(CancellationToken cancellationToken)
     {
         IReadOnlySet<ColorSwitchColorComponent> supportedColorComponents = await GetSupportedAsync(cancellationToken).ConfigureAwait(false);
 

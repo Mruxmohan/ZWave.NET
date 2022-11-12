@@ -166,7 +166,7 @@ public sealed class NotificationCommandClass : CommandClass<NotificationCommand>
             _ => false,
         };
 
-    protected override async Task InterviewCoreAsync(CancellationToken cancellationToken)
+    internal override async Task InterviewAsync(CancellationToken cancellationToken)
     {
         if (IsCommandSupported(NotificationCommand.SupportedGet).GetValueOrDefault(false))
         {

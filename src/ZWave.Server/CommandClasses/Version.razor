@@ -1,5 +1,9 @@
 ﻿@using ZWave.CommandClasses
 
+@inherits CommandClassComponentBase
+
+<Error Message="@ErrorMessage" Exception="@ErrorException" />
+
 @if (CommandClass != null)
 {
     <table class="table table-striped">
@@ -125,10 +129,104 @@
                 }
             </tbody>
         }
+
+        @if (CommandClass.IsCommandSupported(VersionCommand.Get).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetAsync">Get</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(VersionCommand.CommandClassGet).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get Command Class</th>
+                </tr>
+                <tr>
+                    <th scope="row">Command Class</th>
+                    <td>
+                        <select @bind="_commandClassId">
+                            @foreach (KeyValuePair<CommandClassId, CommandClassInfo> kvp in CommandClass.Node.CommandClasses)
+                            {
+                                <option value="@kvp.Key">@kvp.Key</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetCommandClassAsync">Get Command Class</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(VersionCommand.CapabilitiesGet).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get Capabilities</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetCapabilitiesAsync">Get Capabilities</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(VersionCommand.ZWaveSoftwareGet).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get ZWave Software</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetZWaveSoftwareAsync">Get ZWave Software</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
     </table>
 }
 
 @code {
+    // GetCommandClass
+    private CommandClassId _commandClassId;
+
     [Parameter]
     public VersionCommandClass? CommandClass { get; set; }
+
+    private async Task GetAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetAsync(CancellationToken.None),
+            nameof(CommandClass.GetAsync));
+
+    private async Task GetCommandClassAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetCommandClassAsync(_commandClassId, CancellationToken.None),
+            nameof(CommandClass.GetCommandClassAsync));
+
+    private async Task GetCapabilitiesAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetCapabilitiesAsync(CancellationToken.None),
+            nameof(CommandClass.GetCapabilitiesAsync));
+
+    private async Task GetZWaveSoftwareAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetZWaveSoftwareAsync(CancellationToken.None),
+            nameof(CommandClass.GetZWaveSoftwareAsync));
 }

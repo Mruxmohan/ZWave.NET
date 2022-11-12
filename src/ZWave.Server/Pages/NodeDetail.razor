@@ -24,6 +24,13 @@
               <td>@Node.Id</td>
             </tr>
             <tr>
+              <th scope="row">Interview Status</th>
+              <td>
+                  @Node.InterviewStatus
+                  <button @onclick="InterviewAsync">Interview</button>
+              </td>
+            </tr>
+            <tr>
               <th scope="row">Is Listening</th>
               <td>@Node.IsListening</td>
             </tr>
@@ -150,6 +157,8 @@
             _commandClassViewModels.Add(new CommandClassViewModel(commandClass, componentType, componentParameters));
         }
     }
+
+    private async Task InterviewAsync() => await Node!.InterviewAsync(CancellationToken.None);
 
     private record class CommandClassViewModel(CommandClass CommandClass, Type? ComponentType, Dictionary<string, object>? ComponentParameters);
 }

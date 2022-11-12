@@ -97,7 +97,9 @@ internal struct ApplicationUpdateRequest : ICommand<ApplicationUpdateRequest>
     /// This only applies with specific values for <see cref="Event"/>. Using this with the wrong
     /// event type at best lead to garbled data and at worst lead to out of range exceptions.
     /// </remarks>
-    public ApplicationUpdateSmartStartPrime SmartStartPrime => new ApplicationUpdateSmartStartPrime(Frame.CommandParameters[1..]);
+    public ApplicationUpdateSmartStartPrime? SmartStartPrime => Event == ApplicationUpdateEvent.NodeInfoSmartStartHomeIdReceived
+        ? new ApplicationUpdateSmartStartPrime(Frame.CommandParameters[1..])
+        : null;
 
     /// <summary>
     /// The data frame format when the <see cref="Event"/> is <see cref="ApplicationUpdateEvent.IncludedNodeInfoReceived"/>.
@@ -106,7 +108,9 @@ internal struct ApplicationUpdateRequest : ICommand<ApplicationUpdateRequest>
     /// This only applies with specific values for <see cref="Event"/>. Using this with the wrong
     /// event type at best lead to garbled data and at worst lead to out of range exceptions.
     /// </remarks>
-    public ApplicationUpdateSmartStartIncludedNodeInfo SmartStartIncludedNodeInfo => new ApplicationUpdateSmartStartIncludedNodeInfo(Frame.CommandParameters[1..]);
+    public ApplicationUpdateSmartStartIncludedNodeInfo? SmartStartIncludedNodeInfo => Event == ApplicationUpdateEvent.IncludedNodeInfoReceived
+        ? new ApplicationUpdateSmartStartIncludedNodeInfo(Frame.CommandParameters[1..])
+        : null;
 
     public static ApplicationUpdateRequest Create(DataFrame frame) => new ApplicationUpdateRequest(frame);
 }

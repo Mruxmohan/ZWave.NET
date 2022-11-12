@@ -1,0 +1,126 @@
+﻿@using ZWave.CommandClasses
+
+@inherits CommandClassComponentBase
+
+<Error Message="@ErrorMessage" Exception="@ErrorException" />
+
+@if (CommandClass != null)
+{
+    <table class="table table-striped">
+        @if (CommandClass.State.HasValue)
+        {
+            BinarySwitchState state = CommandClass.State.Value;
+
+            <tbody>
+                <tr>
+                    <th scope="row">Current Value</th>
+                    <td>@(state.CurrentValue.HasValue ? state.CurrentValue.Value : "Unknown")</td>
+                </tr>
+
+                @if (state.TargetValue.HasValue)
+                {
+                    <tr>
+                        <th scope="row">Target Value</th>
+                        <td>@state.TargetValue.Value</td>
+                    </tr>
+                }
+
+                @if (state.Duration.HasValue)
+                {
+                    <tr>
+                        <th scope="row">Duration</th>
+                        <td>@(state.Duration.Value.Duration?.ToString("c") ?? "Unknown")</td>
+                    </tr>
+                }
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(BinarySwitchCommand.Set).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Set</th>
+                </tr>
+                <tr>
+                    <th scope="row">Notification Status</th>
+                    <td>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input"
+                                   type="radio"
+                                   name="setNotificationStatus"
+                                   id="setNotificationStatusEnabled"
+                                   checked
+                           @onchange="@(() => { _setValue = true; })">
+                            <label class="form-check-label" for="setNotificationStatusEnabled">
+                                On
+                            </label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input"
+                                   type="radio"
+                                   name="setNotificationStatus"
+                                   id="setNotificationStatusDisabled"
+                                   @onchange="@(() => { _setValue = false; })">
+                            <label class="form-check-label" for="setNotificationStatusDisabled">
+                                Off
+                            </label>
+                        </div>
+                    </td>
+                </tr>
+                @if (CommandClass.Version >= 2)
+                {
+                    <tr>
+                        <th scope="row">Duration</th>
+                        <td>
+                            <input type="number" min="@byte.MinValue" max="@byte.MaxValue" @bind="_setDuration" />
+                        </td>
+                    </tr>
+                }
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="SetAsync">Set</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(BinarySwitchCommand.Get).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetAsync">Get</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+    </table>
+}
+
+@code {
+    // Set
+    private bool _setValue;
+    private byte? _setDuration;
+
+    [Parameter]
+    public BinarySwitchCommandClass? CommandClass { get; set; }
+
+    private async Task SetAsync()
+        => await RunSafelyAsync(
+            async () =>
+            {
+                DurationSet? duration = _setDuration.HasValue ? new DurationSet(_setDuration.Value) : null;
+                await CommandClass!.SetAsync(_setValue, duration, CancellationToken.None);
+            },
+            nameof(CommandClass.SetAsync));
+
+    private async Task GetAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetAsync(CancellationToken.None),
+            nameof(CommandClass.GetAsync));
+}

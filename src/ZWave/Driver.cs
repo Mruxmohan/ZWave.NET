@@ -44,10 +44,10 @@ public sealed class Driver : IAsyncDisposable
             throw new ArgumentNullException(nameof(portName));
         }
 
-        // We can assume the single reader/writer based on the implementation of the serial port coordinator and the single frame processing task
+        // We can assume a single reader based on the implementation of the serial port coordinator. The writer is the driver, which may be called by multiple callers.
         Channel<DataFrameTransmission> dataFrameSendChannel = Channel.CreateUnbounded<DataFrameTransmission>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
 
-        // We can assume a single reader based on the implementation of the serial port coordinator. The writer is the driver, which may be called by multiple callers.
+        // We can assume the single reader/writer based on the implementation of the serial port coordinator and the single frame processing task
         Channel<DataFrame> dataFrameReceiveChannel = Channel.CreateUnbounded<DataFrame>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
 
         _serialPortCoordinator = new ZWaveSerialPortCoordinator(logger, portName, dataFrameSendChannel.Reader, dataFrameReceiveChannel.Writer);
@@ -235,15 +235,26 @@ public sealed class Driver : IAsyncDisposable
         // Begin interviewing the nodes, starting with and waiting for the controller node
         Node controllerNode = Controller.Nodes[Controller.NodeId];
         await controllerNode.InterviewAsync(cancellationToken).ConfigureAwait(false);
-        foreach (KeyValuePair<byte, Node> pair in Controller.Nodes)
+
+        // This is intentionally fire-and-forget
+        _ = Task.Run(async () =>
         {
-            Node node = pair.Value;
-            if (node != controllerNode)
+            foreach (KeyValuePair<byte, Node> pair in Controller.Nodes)
             {
-                // This is intentionally fire-and-forget
-                _ = node.InterviewAsync(cancellationToken);
+                Node node = pair.Value;
+                if (node != controllerNode)
+                {
+                    try
+                    {
+                        await node.InterviewAsync(cancellationToken);
+                    }
+                    catch (Exception)
+                    {
+                        // TODO: Log
+                    }
+                }
             }
-        }
+        });
 
         _logger.LogDriverInitialized();
     }

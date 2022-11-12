@@ -204,7 +204,7 @@ public sealed class BatteryCommandClass : CommandClass<BatteryCommand>
         return Health!.Value;
     }
 
-    protected override async Task InterviewCoreAsync(CancellationToken cancellationToken)
+    internal override async Task InterviewAsync(CancellationToken cancellationToken)
     {
         _ = await GetAsync(cancellationToken).ConfigureAwait(false);
 

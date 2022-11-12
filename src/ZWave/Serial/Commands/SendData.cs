@@ -46,7 +46,7 @@ internal struct SendDataCallback : ICommand<SendDataCallback>
 
     public static DataFrameType Type => DataFrameType.REQ;
 
-    public static CommandId CommandId => CommandId.SetSucNodeId;
+    public static CommandId CommandId => CommandId.SendData;
 
     public DataFrame Frame { get; }
 

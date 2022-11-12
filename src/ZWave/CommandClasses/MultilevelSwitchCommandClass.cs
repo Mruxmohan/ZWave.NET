@@ -99,7 +99,7 @@ public readonly struct MultilevelSwitchState
 
 // Note: We are not implementing the secondary switch at all since it's deprecated.
 [CommandClass(CommandClassId.MultilevelSwitch)]
-internal class MultilevelSwitchCommandClass : CommandClass<MultilevelSwitchCommand>
+public sealed class MultilevelSwitchCommandClass : CommandClass<MultilevelSwitchCommand>
 {
     public MultilevelSwitchCommandClass(CommandClassInfo info, Driver driver, Node node)
         : base(info, driver, node)
@@ -121,7 +121,7 @@ internal class MultilevelSwitchCommandClass : CommandClass<MultilevelSwitchComma
             _ => false,
         };
 
-    protected override async Task InterviewCoreAsync(CancellationToken cancellationToken)
+    internal override async Task InterviewAsync(CancellationToken cancellationToken)
     {
         _ = await GetAsync(cancellationToken);
 

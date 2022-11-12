@@ -54,28 +54,24 @@ internal static class FrameParser
             {
                 frame = Frame.ACK;
                 sequence = sequence.Slice(1);
-                logger.LogSerialApiFrameReceived(frame);
                 return true;
             }
             case FrameHeader.NAK:
             {
                 frame = Frame.NAK;
                 sequence = sequence.Slice(1);
-                logger.LogSerialApiFrameReceived(frame);
                 return true;
             }
             case FrameHeader.CAN:
             {
                 frame = Frame.CAN;
                 sequence = sequence.Slice(1);
-                logger.LogSerialApiFrameReceived(frame);
                 return true;
             }
             case FrameHeader.SOF:
             {
                 if (!reader.TryPeek(1, out byte lengthByte))
                 {
-                    logger.LogSerialApiPartialDataFrameReceived(reader.Remaining);
                     return false;
                 }
 
@@ -83,7 +79,6 @@ internal static class FrameParser
                 int frameLength = lengthByte + 2;
                 if (reader.Remaining < frameLength)
                 {
-                    logger.LogSerialApiPartialDataFrameReceived(reader.Remaining);
                     return false;
                 }
 
@@ -96,7 +91,6 @@ internal static class FrameParser
                 // A complete data frame was read. Advance the sequence.
                 sequence = sequence.Slice(frameLength);
                 frame = new Frame(frameData);
-                logger.LogSerialApiFrameReceived(frame);
                 return true;
             }
             default:

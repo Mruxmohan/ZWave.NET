@@ -30,6 +30,8 @@ public sealed class Node
 
     public byte Id { get; }
 
+    public NodeInterviewStatus InterviewStatus { get; private set; }
+
     public bool IsListening { get; private set; }
 
     public bool IsRouting { get; private set; }
@@ -97,16 +99,18 @@ public sealed class Node
     }
 
     /// <summary>
-    /// Interviews a node.
+    /// Interviews the node.
     /// </summary>
     /// <remarks>
     /// the interview may take a very long time, so the returned task should generally not be awaited.
     /// </remarks>
-    internal async Task InterviewAsync(CancellationToken cancellationToken)
+    public async Task InterviewAsync(CancellationToken cancellationToken)
     {
         Task interviewTask;
         lock (_interviewStateLock)
         {
+            InterviewStatus = NodeInterviewStatus.None;
+
             // Cancel any previous interview
             _interviewCancellationTokenSource?.Cancel();
             Task? previousInterviewTask = _interviewTask;
@@ -119,8 +123,18 @@ public sealed class Node
                 // Wait for any previous interview to stop
                 if (previousInterviewTask != null)
                 {
-                    await previousInterviewTask.ConfigureAwait(false);
+                    try
+                    {
+                        await previousInterviewTask.ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Swallow the cancellation as we just cancelled it.
+                    }
                 }
+
+                // Reset the status again in case the previous interview task modified it.
+                InterviewStatus = NodeInterviewStatus.None;
 
                 var getNodeProtocolInfoRequest = GetNodeProtocolInfoRequest.Create(Id);
                 GetNodeProtocolInfoResponse getNodeProtocolInfoResponse = await _driver.SendCommandAsync<GetNodeProtocolInfoRequest, GetNodeProtocolInfoResponse>(
@@ -136,38 +150,38 @@ public sealed class Node
                 SupportsSecurity = getNodeProtocolInfoResponse.SupportsSecurity;
                 // TODO: Log
 
+                InterviewStatus = NodeInterviewStatus.ProtocolInfo;
+
                 // This is all we need for the controller node
                 if (Id == _driver.Controller.NodeId)
                 {
+                    InterviewStatus = NodeInterviewStatus.Complete;
                     return;
                 }
 
                 // This request causes unsolicited requests from the controller (kind of like a callback) with command id ApplicationControllerUpdate
                 var requestNodeInfoRequest = RequestNodeInfoRequest.Create(Id);
+                int requestNodeInfoRequestNum = 0;
                 ResponseStatusResponse requestNodeInfoResponse;
                 do
                 {
                     requestNodeInfoResponse = await _driver.SendCommandAsync<RequestNodeInfoRequest, ResponseStatusResponse>(requestNodeInfoRequest, cancellationToken)
                         .ConfigureAwait(false);
+
+                    if (requestNodeInfoRequestNum > 0)
+                    {
+                        await Task.Delay(100 * requestNodeInfoRequestNum);
+                    }
+
+                    requestNodeInfoRequestNum++;
                 }
                 while (!requestNodeInfoResponse.WasRequestAccepted); // If the command is rejected, retry.
 
                 await _nodeInfoRecievedEvent.WaitAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+                InterviewStatus = NodeInterviewStatus.NodeInfo;
 
-                // Initialize command classes
-                List<Task> commandClassInitializationTasks;
-                lock (_commandClasses)
-                {
-                    commandClassInitializationTasks = new List<Task>(_commandClasses.Count);
-                    foreach (KeyValuePair<CommandClassId, CommandClass> pair in _commandClasses)
-                    {
-                        CommandClass commandClass = pair.Value;
-                        Task initializationTask = commandClass.InterviewAsync(cancellationToken);
-                        commandClassInitializationTasks.Add(initializationTask);
-                    }
-                }
-
-                await Task.WhenAll(commandClassInitializationTasks).ConfigureAwait(false);
+                await InterviewCommandClassesAsync(cancellationToken).ConfigureAwait(false);
+                InterviewStatus = NodeInterviewStatus.Complete;
             },
             cancellationToken);
         }
@@ -199,6 +213,59 @@ public sealed class Node
                 CommandClass commandClass = CommandClassFactory.Create(commandClassInfo, _driver, this);
                 _commandClasses.Add(commandClassInfo.CommandClass, commandClass);
             }
+        }
+    }
+
+    private async Task InterviewCommandClassesAsync(CancellationToken cancellationToken)
+    {
+        /*
+            Command classes may depend on other command classes, so we need to interview them in topographical order.
+            Instead of sorting them completely out of the gate, we'll just create a list of all the command classes (list A) and if its dependencies
+            are met interview it and if not add to another list (list B). After exhausing the list A, swap list A and B and repeat until both are empty.
+        */
+        Queue<CommandClass> commandClasses = new(_commandClasses.Count);
+        lock (_commandClasses)
+        {
+            foreach ((_, CommandClass commandClass) in _commandClasses)
+            {
+                commandClasses.Enqueue(commandClass);
+            }
+        }
+
+        HashSet<CommandClassId> interviewedCommandClasses = new (_commandClasses.Count);
+        Queue<CommandClass> blockedCommandClasses = new(_commandClasses.Count);
+        while (commandClasses.Count > 0)
+        {
+            while (commandClasses.Count > 0)
+            {
+                CommandClass commandClass = commandClasses.Dequeue();
+                CommandClassId commandClassId = commandClass.Info.CommandClass;
+
+                bool isBlocked = false;
+                CommandClassId[] commandClassDependencies = commandClass.Dependencies;
+                for (int i = 0; i < commandClassDependencies.Length; i++)
+                {
+                    if (!interviewedCommandClasses.Contains(commandClassDependencies[i]))
+                    {
+                        isBlocked = true;
+                        break;
+                    }
+                }
+
+                if (isBlocked)
+                {
+                    blockedCommandClasses.Enqueue(commandClass);
+                }
+                else
+                {
+                    await commandClass.InterviewAsync(cancellationToken);
+                    interviewedCommandClasses.Add(commandClassId);
+                }
+            }
+
+            Queue<CommandClass> tmp = commandClasses;
+            commandClasses = blockedCommandClasses;
+            blockedCommandClasses = tmp;
         }
     }
 

@@ -1,0 +1,302 @@
+﻿@using ZWave.CommandClasses
+
+@inherits CommandClassComponentBase
+
+<Error Message="@ErrorMessage" Exception="@ErrorException" />
+
+@if (CommandClass != null)
+{
+    <table class="table table-striped">
+        @if (CommandClass.SupportedComponents != null)
+        {
+            <tbody>
+                <tr>
+                    <th scope="row">Supported Components</th>
+                    <td>@string.Join(", ", CommandClass.SupportedComponents)</td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.ColorComponents != null)
+        {
+            @foreach (KeyValuePair<ColorSwitchColorComponent, ColorSwitchColorComponentState?> kvp in CommandClass.ColorComponents)
+            {
+                @if (kvp.Value.HasValue)
+                {
+                    ColorSwitchColorComponentState state = kvp.Value.Value;
+
+                    <tbody>
+                        <tr>
+                            <th scope="rowgroup" colspan="2">@kvp.Key</th>
+                        </tr>
+
+                        <tr>
+                            <th scope="row">Current Value</th>
+                            <td>@state.CurrentValue</td>
+                        </tr>
+
+                        @if (state.TargetValue.HasValue)
+                        {
+                            <tr>
+                                <th scope="row">Target Value</th>
+                                <td>@state.TargetValue.Value</td>
+                            </tr>
+                        }
+
+                        @if (state.Duration.HasValue)
+                        {
+                            <tr>
+                                <th scope="row">Duration</th>
+                                <td>@(state.Duration.Value.Duration?.ToString("c") ?? "Unknown")</td>
+                            </tr>
+                        }
+                    </tbody>
+                }
+            }
+        }
+
+        @if (CommandClass.IsCommandSupported(ColorSwitchCommand.SupportedGet).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get Supported</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetSupportedAsync">Get Supported</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(ColorSwitchCommand.Get).GetValueOrDefault() && CommandClass.SupportedComponents != null)
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get</th>
+                </tr>
+                <tr>
+                    <th scope="row">Color Component</th>
+                    <td>
+                        <select @bind="_getColorComponent">
+                            @foreach (ColorSwitchColorComponent supportedComponent in CommandClass.SupportedComponents)
+                            {
+                                <option value="@supportedComponent">@supportedComponent</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetAsync">Get</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(ColorSwitchCommand.Set).GetValueOrDefault() && _setValues != null)
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Set</th>
+                </tr>
+                @foreach (ColorComponentSetValue setValue in _setValues)
+                {
+                    <tr>
+                        <th scope="row">@setValue.ColorComponent Value</th>
+                        <td>
+                            <input type="number" min="@byte.MinValue" max="@byte.MaxValue" @bind="setValue.Value" />
+                        </td>
+                    </tr>
+                }
+                @if (CommandClass.Version >= 2)
+                {
+                    <tr>
+                        <th scope="row">Duration</th>
+                        <td>
+                            <input type="number" min="@byte.MinValue" max="@byte.MaxValue" @bind="_setDuration" />
+                        </td>
+                    </tr>
+                }
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="SetAsync">Set</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(ColorSwitchCommand.StartLevelChange).GetValueOrDefault() && CommandClass.SupportedComponents != null)
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Start Level Change</th>
+                </tr>
+                <tr>
+                    <th scope="row">Direction</th>
+                    <td>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input"
+                           type="radio"
+                           name="startLevelChangeDirection"
+                           id="startLevelChangeDirectionUp"
+                           checked
+                           @onchange="@(() => { _startLevelChangeDirection = ColorSwitchChangeDirection.Up; })">
+                            <label class="form-check-label" for="startLevelChangeDirectionUp">
+                                Up
+                            </label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input"
+                           type="radio"
+                           name="startLevelChangeDirection"
+                           id="startLevelChangeDirectionDown"
+                           @onchange="@(() => { _startLevelChangeDirection = ColorSwitchChangeDirection.Down; })">
+                            <label class="form-check-label" for="startLevelChangeDirectionDown">
+                                Down
+                            </label>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Color Component</th>
+                    <td>
+                        <select @bind="_startLevelChangeColorComponent">
+                            @foreach (ColorSwitchColorComponent supportedComponent in CommandClass.SupportedComponents)
+                            {
+                                <option value="@supportedComponent">@supportedComponent</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Start Level</th>
+                    <td>
+                        <input type="number" min="0" max="100" @bind="_startLevelChangeStartLevel" />
+                    </td>
+                </tr>
+                @if (CommandClass.Version >= 3)
+                {
+                    <tr>
+                        <th scope="row">Duration</th>
+                        <td>
+                            <input type="number" min="@byte.MinValue" max="@byte.MaxValue" @bind="_startLevelChangeDuration" />
+                        </td>
+                    </tr>
+                }
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="StartLevelChangeAsync">Start Level Change</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(ColorSwitchCommand.StopLevelChange).GetValueOrDefault() && CommandClass.SupportedComponents != null)
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Stop Level Change</th>
+                </tr>
+                <tr>
+                    <th scope="row">Color Component</th>
+                    <td>
+                        <select @bind="_stopLevelChangeColorComponent">
+                            @foreach (ColorSwitchColorComponent supportedComponent in CommandClass.SupportedComponents)
+                            {
+                                <option value="@supportedComponent">@supportedComponent</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="StopLevelChangeAsync">Stop Level Change</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+    </table>
+}
+
+@code {
+    // Get
+    private ColorSwitchColorComponent _getColorComponent;
+
+    // Set
+    private List<ColorComponentSetValue>? _setValues;
+    private byte? _setDuration;
+
+    // StartLevelChange
+    private ColorSwitchChangeDirection _startLevelChangeDirection;
+    private ColorSwitchColorComponent _startLevelChangeColorComponent;
+    private byte? _startLevelChangeStartLevel;
+    private byte? _startLevelChangeDuration;
+
+    // StopLevelChange
+    private ColorSwitchColorComponent _stopLevelChangeColorComponent;
+
+    [Parameter]
+    public ColorSwitchCommandClass? CommandClass { get; set; }
+
+    protected override void OnInitialized()
+    {
+        // TODO: Update on change
+        _setValues = new List<ColorComponentSetValue>(CommandClass?.ColorComponents?.Count ?? 0);
+        if (CommandClass?.ColorComponents != null)
+        {
+            foreach (KeyValuePair<ColorSwitchColorComponent, ColorSwitchColorComponentState?> kvp in CommandClass.ColorComponents)
+            {
+                _setValues.Add(new ColorComponentSetValue { ColorComponent = kvp.Key, Value = kvp.Value?.CurrentValue ?? 0 });
+            }
+        }
+
+        base.OnInitialized();
+    }
+
+    private async Task GetSupportedAsync()
+    => await RunSafelyAsync(
+            async () => await CommandClass!.GetSupportedAsync(CancellationToken.None),
+            nameof(CommandClass.GetSupportedAsync));
+
+    private async Task GetAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetAsync(_getColorComponent, CancellationToken.None),
+            nameof(CommandClass.GetAsync));
+
+    private async Task SetAsync()
+        => await RunSafelyAsync(
+            async () =>
+            {
+                var setValues = _setValues!.ToDictionary(v => v.ColorComponent, v => v.Value);
+                DurationSet? duration = _setDuration.HasValue ? new DurationSet(_setDuration.Value) : null;
+                await CommandClass!.SetAsync(setValues, duration, CancellationToken.None);
+            },
+            nameof(CommandClass.SetAsync));
+
+    private async Task StartLevelChangeAsync()
+        => await RunSafelyAsync(
+            async () =>
+            {
+                DurationSet? duration = _startLevelChangeDuration.HasValue ? new DurationSet(_startLevelChangeDuration.Value) : null;
+                await CommandClass!.StartLevelChangeAsync(_startLevelChangeDirection, _startLevelChangeColorComponent, _startLevelChangeStartLevel, duration, CancellationToken.None);
+            },
+            nameof(CommandClass.StartLevelChangeAsync));
+
+    private async Task StopLevelChangeAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.StopLevelChangeAsync(_stopLevelChangeColorComponent, CancellationToken.None),
+            nameof(CommandClass.StopLevelChangeAsync));
+
+    private sealed class ColorComponentSetValue
+    {
+        public ColorSwitchColorComponent ColorComponent { get; init; }
+
+        public byte Value { get; set; }
+    }
+}

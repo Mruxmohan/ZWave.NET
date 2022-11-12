@@ -184,7 +184,7 @@ public sealed class MultilevelSensorCommandClass : CommandClass<MultilevelSensor
         return SupportedScales![sensorType]!;
     }
 
-    protected override async Task InterviewCoreAsync(CancellationToken cancellationToken)
+    internal override async Task InterviewAsync(CancellationToken cancellationToken)
     {
         if (IsCommandSupported(MultilevelSensorCommand.SupportedSensorGet).GetValueOrDefault())
         {

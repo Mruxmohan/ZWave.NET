@@ -1,0 +1,165 @@
+﻿@using ZWave.CommandClasses
+
+@inherits CommandClassComponentBase
+
+@inject Driver Driver
+
+<Error Message="@ErrorMessage" Exception="@ErrorException" />
+
+@if (CommandClass != null)
+{
+    <table class="table table-striped">
+        @if (CommandClass.Interval != null)
+        {
+            WakeUpInterval wakeUpInterval = CommandClass.Interval.Value;
+
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Interval</th>
+                </tr>
+                <tr>
+                    <th scope="row">Wakeup Interval In Seconds</th>
+                    <td>@wakeUpInterval.WakeupIntervalInSeconds</td>
+                </tr>
+                <tr>
+                    <th scope="row">Wakeup Destination Node Id</th>
+                    <td>@wakeUpInterval.WakeupDestinationNodeId</td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IntervalCapabilities != null)
+        {
+            WakeUpIntervalCapabilities wakeUpIntervalCapabilities = CommandClass.IntervalCapabilities.Value;
+
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Interval Capabilities</th>
+                </tr>
+                <tr>
+                    <th scope="row">Minimum Wakeup Interval In Seconds</th>
+                    <td>@wakeUpIntervalCapabilities.MinimumWakeupIntervalInSeconds</td>
+                </tr>
+                <tr>
+                    <th scope="row">Maximum Wakeup Interval In Seconds</th>
+                    <td>@wakeUpIntervalCapabilities.MaximumWakeupIntervalInSeconds</td>
+                </tr>
+                <tr>
+                    <th scope="row">Default Wakeup Interval In Seconds</th>
+                    <td>@wakeUpIntervalCapabilities.DefaultWakeupIntervalInSeconds</td>
+                </tr>
+                <tr>
+                    <th scope="row">Wakeup Interval Step In Seconds</th>
+                    <td>@wakeUpIntervalCapabilities.WakeupIntervalStepInSeconds</td>
+                </tr>
+                <tr>
+                    <th scope="row">Supports Wake Up On Demand</th>
+                    <td>@wakeUpIntervalCapabilities.SupportsWakeUpOnDemand</td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(WakeUpCommand.IntervalGet).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get Interval</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetIntervalAsync">Get Interval</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(WakeUpCommand.IntervalSet).GetValueOrDefault())
+        {
+            uint minimumWakeupIntervalInSeconds;
+            uint maximumWakeupIntervalInSeconds;
+            uint wakeupIntervalStepInSeconds;
+            if (CommandClass.IntervalCapabilities != null)
+            {
+                WakeUpIntervalCapabilities wakeUpIntervalCapabilities = CommandClass.IntervalCapabilities.Value;
+                minimumWakeupIntervalInSeconds = wakeUpIntervalCapabilities.MinimumWakeupIntervalInSeconds;
+                maximumWakeupIntervalInSeconds = wakeUpIntervalCapabilities.MaximumWakeupIntervalInSeconds;
+                wakeupIntervalStepInSeconds = wakeUpIntervalCapabilities.WakeupIntervalStepInSeconds;
+            }
+            else
+            {
+                minimumWakeupIntervalInSeconds = 1;
+                maximumWakeupIntervalInSeconds = (1 << 24) - 1;
+                wakeupIntervalStepInSeconds = 1;
+            }
+
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Set Interval</th>
+                </tr>
+                <tr>
+                    <th scope="row">Wakeup Interval In Seconds</th>
+                    <td>
+                        <input type="number" min="@minimumWakeupIntervalInSeconds" max="@maximumWakeupIntervalInSeconds" step="@wakeupIntervalStepInSeconds" @bind="_setIntervalWakeupIntervalInSeconds" />
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Wakeup Destination Node Id</th>
+                    <td>
+                        <select @bind="_setIntervalWakeupDestinationNodeId">
+                            @foreach (KeyValuePair<byte, Node> kvp in Driver.Controller.Nodes)
+                            {
+                                <option value="@kvp.Key">@kvp.Key</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="SetIntervalAsync">Set Interval</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(WakeUpCommand.IntervalCapabilitiesGet).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                <th scope="rowgroup" colspan="2">Get Interval Capabilities</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetIntervalCapabilitiesAsync">Get Interval Capabilities</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+    </table>
+}
+
+@code {
+    // SetInterval
+    private uint _setIntervalWakeupIntervalInSeconds;
+    private byte _setIntervalWakeupDestinationNodeId;
+
+    [Parameter]
+    public WakeUpCommandClass? CommandClass { get; set; }
+
+    private async Task GetIntervalAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetIntervalAsync(CancellationToken.None),
+            nameof(CommandClass.GetIntervalAsync));
+
+    private async Task SetIntervalAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.SetIntervalAsync(_setIntervalWakeupIntervalInSeconds, _setIntervalWakeupDestinationNodeId, CancellationToken.None),
+            nameof(CommandClass.SetIntervalAsync));
+
+    private async Task GetIntervalCapabilitiesAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetIntervalCapabilitiesAsync(CancellationToken.None),
+            nameof(CommandClass.GetIntervalCapabilitiesAsync));
+}

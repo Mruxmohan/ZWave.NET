@@ -23,7 +23,7 @@ internal enum RssiMeasurementType
     Unavailable,
 }
 
-internal struct RssiMeasurement
+internal struct RssiMeasurement : IEquatable<RssiMeasurement>
 {
     private readonly sbyte _value;
 
@@ -45,5 +45,15 @@ internal struct RssiMeasurement
 
     public sbyte? Value => HasValue ? _value : null;
 
+    public bool Equals(RssiMeasurement other) => _value == other._value;
+
     public static implicit operator RssiMeasurement(byte b) => new RssiMeasurement(b.ToInt8());
+
+    public static bool operator ==(RssiMeasurement a, RssiMeasurement b) => a.Equals(b);
+
+    public static bool operator !=(RssiMeasurement a, RssiMeasurement b) => !(a == b);
+
+    public override bool Equals(object? obj) => obj is RssiMeasurement measurement && Equals(measurement);
+
+    public override int GetHashCode() => _value.GetHashCode();
 }

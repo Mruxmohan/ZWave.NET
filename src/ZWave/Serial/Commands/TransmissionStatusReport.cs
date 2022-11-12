@@ -69,16 +69,16 @@ internal readonly struct TransmissionStatusReport
     /// <summary>
     /// The RSSI value measured from Repeaters for the incoming Acknowledgement frame.
     /// </summary>
-    public ReadOnlySpan<RssiMeasurement> AckRepeaterRssi
+    public ReadOnlyMemory<RssiMeasurement> AckRepeaterRssi
     {
         get
         {
             if (_data.Length < 8)
             {
-                return ReadOnlySpan<RssiMeasurement>.Empty;
+                return ReadOnlyMemory<RssiMeasurement>.Empty;
             }
 
-            Span<RssiMeasurement> result = new RssiMeasurement[4];
+            var result = new RssiMeasurement[4];
             result[0] = _data.Span[4];
             result[1] = _data.Span[5];
             result[2] = _data.Span[6];
@@ -114,10 +114,10 @@ internal readonly struct TransmissionStatusReport
     /// <summary>
     /// The repeaters used in the route to communicate with the destination.
     /// </summary>
-    public ReadOnlySpan<byte> LastRouteRepeaters
+    public ReadOnlyMemory<byte> LastRouteRepeaters
         => _data.Length > 14
-            ? _data.Span[11..15]
-            : ReadOnlySpan<byte>.Empty;
+            ? _data[11..15]
+            : ReadOnlyMemory<byte>.Empty;
 
     /// <summary>
     /// Whether the destination requires a 1000ms beam (or a fragmented beam) to be reached.

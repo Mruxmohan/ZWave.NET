@@ -1,5 +1,9 @@
 ﻿@using ZWave.CommandClasses
 
+@inherits CommandClassComponentBase
+
+<Error Message="@ErrorMessage" Exception="@ErrorException" />
+
 @if (CommandClass != null)
 {
     <table class="table table-striped">
@@ -44,10 +48,120 @@
                 }
             </tbody>
         }
+
+        @if (CommandClass.IsCommandSupported(MultilevelSensorCommand.Get).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get</th>
+                </tr>
+                @if (CommandClass.Version >= 5)
+                {
+                    <tr>
+                        <th scope="row">Sensor Type</th>
+                        <td>
+                            <select @bind="_getSensorType">
+                                <option value=""></option>
+                                @foreach (MultilevelSensorType sensorType in Enum.GetValues<MultilevelSensorType>())
+                                {
+                                    <option value="@sensorType">@sensorType</option>
+                                }
+                            </select>
+                        </td>
+                    </tr>
+                    @if (_getSensorType.HasValue
+                        && CommandClass.SupportedScales != null
+                        && CommandClass.SupportedScales.TryGetValue(_getSensorType.Value, out IReadOnlySet<MultilevelSensorScale>? scales)
+                        && scales != null)
+                    {
+                        <tr>
+                            <th scope="row">Scale</th>
+                            <td>
+                                <select @bind="_getScale">
+                                    @foreach (MultilevelSensorScale scale in scales)
+                                    {
+                                        <option value="@scale.Id">@scale.Label (@scale.Unit)</option>
+                                    }
+                                </select>
+                            </td>
+                        </tr>
+                    }
+                }
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetAsync">Get</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(MultilevelSensorCommand.SupportedSensorGet).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get Supported Sensor Types</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetSupportedSensorTypesAsync">Get Supported Sensor Types</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(MultilevelSensorCommand.SupportedScaleGet).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get Supported Scales</th>
+                </tr>
+                <tr>
+                    <th scope="row">SensorType</th>
+                    <td>
+                        <select @bind="_getSupportedScalesSensorType">
+                            @foreach (MultilevelSensorType sensorType in Enum.GetValues<MultilevelSensorType>())
+                            {
+                                <option value="@sensorType">@sensorType</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetSupportedScalesAsync">Get Supported Scales</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
     </table>
 }
 
 @code {
+    // Get
+    private MultilevelSensorType? _getSensorType;
+    private MultilevelSensorScale? _getScale;
+
+    // GetSupportedScales
+    private MultilevelSensorType _getSupportedScalesSensorType;
+
     [Parameter]
     public MultilevelSensorCommandClass? CommandClass { get; set; }
+
+    private async Task GetAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetAsync(_getSensorType, _getScale, CancellationToken.None),
+            nameof(CommandClass.GetAsync));
+
+    private async Task GetSupportedSensorTypesAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetSupportedSensorsAsync(CancellationToken.None),
+            nameof(CommandClass.GetSupportedSensorsAsync));
+
+    private async Task GetSupportedScalesAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetSupportedScalesAsync(_getSupportedScalesSensorType, CancellationToken.None),
+            nameof(CommandClass.GetSupportedScalesAsync));
 }

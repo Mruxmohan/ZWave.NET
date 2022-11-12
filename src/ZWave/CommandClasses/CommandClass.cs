@@ -35,11 +35,12 @@ public abstract class CommandClass
         Predicate<CommandClassFrame>? Predicate,
         TaskCompletionSource<CommandClassFrame> TaskCompletionSource);
 
+    // Almost all CCs depend on knowing their own version.
+    private static readonly CommandClassId[] DefaultDependencies = new[] { CommandClassId.Version };
+
     // We don't expect this to get very large at all, so using a simple list to save on memory instead
     // of Dictionary<CommandId, List<TCS>> which would have faster lookups
     private readonly List<AwaitedReport> _awaitedReports = new List<AwaitedReport>();
-
-    private Task? _interviewTask;
 
     internal CommandClass(
         CommandClassInfo info,
@@ -80,27 +81,12 @@ public abstract class CommandClass
         Version = version;
     }
 
-    internal Task InterviewAsync(CancellationToken cancellationToken)
-    {
-        _interviewTask = Task.Run(
-            async () =>
-            {
-                await WaitForDependenciesInterviewAsync();
-                await InterviewCoreAsync(cancellationToken);
-            },
-            cancellationToken);
-        return _interviewTask;
-    }
+    internal abstract Task InterviewAsync(CancellationToken cancellationToken);
 
-    protected abstract Task InterviewCoreAsync(CancellationToken cancellationToken);
-
-    internal Task WaitForInterviewAsync() => _interviewTask ?? throw new InvalidOperationException("The command class has not begun its interview yet");
-
-    protected virtual async Task WaitForDependenciesInterviewAsync()
-    {
-        // Almost all CCs depend on knowing their own version.
-        await Node.GetCommandClass(CommandClassId.Version).WaitForInterviewAsync().ConfigureAwait(false);
-    }
+    /// <summary>
+    /// Gets a list of command classes which must be interviewed before this one.
+    /// </summary>
+    internal virtual CommandClassId[] Dependencies => DefaultDependencies;
 
     protected abstract bool? IsCommandSupported(byte command);
 
@@ -122,7 +108,7 @@ public abstract class CommandClass
                 if (awaitedReport.CommandId == frame.CommandId
                     && (awaitedReport.Predicate == null || awaitedReport.Predicate(frame)))
                 {
-                    awaitedReport.TaskCompletionSource.SetResult(frame);
+                    awaitedReport.TaskCompletionSource.TrySetResult(frame);
                     _awaitedReports.RemoveAt(i);
                 }
                 else
@@ -169,7 +155,7 @@ public abstract class CommandClass
             _awaitedReports.Add(awaitedReport);
         }
 
-        using (cancellationToken.Register(static state => ((TaskCompletionSource)state!).TrySetCanceled(), tcs))
+        using (cancellationToken.Register(static state => ((TaskCompletionSource<CommandClassFrame>)state!).TrySetCanceled(), tcs))
         {
             return await tcs.Task;
         }

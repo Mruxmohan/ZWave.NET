@@ -1,0 +1,351 @@
+﻿@using ZWave.CommandClasses
+
+@inherits CommandClassComponentBase
+
+@inject Driver Driver
+
+<Error Message="@ErrorMessage" Exception="@ErrorException" />
+
+@if (CommandClass != null)
+{
+    <table class="table table-striped">
+        @if (CommandClass.LastNotification.HasValue)
+        {
+            ZWave.CommandClasses.Notification lastNotification = CommandClass.LastNotification.Value;
+
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Last Notification</th>
+                </tr>
+
+                @if (lastNotification.V1AlarmType.HasValue)
+                {
+                    <tr>
+                        <th scope="row">V1 Alarm Type</th>
+                        <td>@lastNotification.V1AlarmType.Value</td>
+                    </tr>
+                }
+
+                @if (lastNotification.V1AlarmLevel.HasValue)
+                {
+                    <tr>
+                        <th scope="row">V1 Alarm Level</th>
+                        <td>@lastNotification.V1AlarmLevel.Value</td>
+                    </tr>
+                }
+
+                @if (lastNotification.ZensorNetSourceNodeId.HasValue)
+                {
+                    <tr>
+                        <th scope="row">Zensor Net Source Node Id</th>
+                        <td>@lastNotification.ZensorNetSourceNodeId.Value</td>
+                    </tr>
+                }
+
+                @if (lastNotification.NotificationStatus.HasValue)
+                {
+                    <tr>
+                        <th scope="row">Notification Status</th>
+                        <td>@lastNotification.NotificationStatus.Value</td>
+                    </tr>
+                }
+
+                @if (lastNotification.NotificationType.HasValue)
+                {
+                    <tr>
+                        <th scope="row">Notification Type</th>
+                        <td>@lastNotification.NotificationType.Value</td>
+                    </tr>
+                }
+
+                @if (lastNotification.NotificationEvent.HasValue)
+                {
+                    <tr>
+                        <th scope="row">Notification Event</th>
+                        <td>@lastNotification.NotificationEvent.Value</td>
+                    </tr>
+                }
+
+                @if (lastNotification.EventParameters.HasValue)
+                {
+                    <tr>
+                        <th scope="row">EventParameters</th>
+                        <td>
+                            @{
+                                ReadOnlySpan<byte> eventParameters = lastNotification.EventParameters.Value.Span;
+                                for (var i = 0; i < eventParameters.Length; i++)
+                                {
+                                    if (i > 0)
+                                    {
+                                        <text> </text>
+                                    }
+
+                                    <text>@eventParameters[i].ToString("x2")</text>
+                                }
+                            }
+                        </td>
+                    </tr>
+                }
+
+                @if (lastNotification.SequenceNumber.HasValue)
+                {
+                    <tr>
+                        <th scope="row">Sequence Number</th>
+                        <td>@lastNotification.SequenceNumber.Value</td>
+                    </tr>
+                }
+            </tbody>
+        }
+
+        @if (CommandClass.SupportedNotifications.HasValue)
+        {
+            SupportedNotifications supportedNotifications = CommandClass.SupportedNotifications.Value;
+
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Supported Notifications</th>
+                </tr>
+                <tr>
+                    <th scope="row">Supports V1 Alarm</th>
+                    <td>@supportedNotifications.SupportsV1Alarm</td>
+                </tr>
+                <tr>
+                    <th scope="row">Supported Notification Types</th>
+                    <td>
+                        @foreach (NotificationType notificationType in supportedNotifications.SupportedNotificationTypes)
+                        {
+                            <p>@notificationType</p>
+                        }
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.SupportedNotificationEvents != null)
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Supported Notification Events</th>
+                </tr>
+                @foreach (KeyValuePair<NotificationType, SupportedNotificationEvents?> kvp in CommandClass.SupportedNotificationEvents)
+                {
+                    @if (kvp.Value != null)
+                    {
+                        <tr>
+                            <th scope="row">@kvp.Key</th>
+                            <td>
+                                @foreach (byte notificationEvent in kvp.Value.Value.SupportedEvents)
+                                {
+                                    <p>@notificationEvent</p>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(NotificationCommand.Get).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get (V1)</th>
+                </tr>
+                <tr>
+                    <th scope="row">Alarm Type</th>
+                    <td>
+                        <input type="number" min="@byte.MinValue" max="@byte.MaxValue" @bind="_getAlarmType" />
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetV1Async">Get (V1)</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(NotificationCommand.Get).GetValueOrDefault() && CommandClass.SupportedNotificationEvents != null)
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get</th>
+                </tr>
+                <tr>
+                    <th scope="row">Notification Type</th>
+                    <td>
+                        <select @bind="_getNotificationType">
+                            @foreach (KeyValuePair<NotificationType, SupportedNotificationEvents?> kvp in CommandClass.SupportedNotificationEvents)
+                            {
+                                <option value="@kvp.Key">@kvp.Key</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+                @if (CommandClass.Version >= 3 && CommandClass.SupportedNotificationEvents.ContainsKey(_getNotificationType))
+                {
+                    SupportedNotificationEvents? supportedNotificationEvents = CommandClass.SupportedNotificationEvents[_getNotificationType];
+                    if (supportedNotificationEvents.HasValue)
+                    {
+                        <tr>
+                            <th scope="row">Notification Event</th>
+                            <td>
+                                <select @bind="_getNotificationEvent">
+                                    @foreach (byte notificationEvent in supportedNotificationEvents.Value.SupportedEvents)
+                                    {
+                                        <p>@notificationEvent</p>
+                                        <option value="@notificationEvent">@notificationEvent</option>
+                                    }
+                                </select>
+                            </td>
+                        </tr>
+                    }
+                }
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetAsync">Get</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(NotificationCommand.Set).GetValueOrDefault() && CommandClass.SupportedNotificationEvents != null)
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Set</th>
+                </tr>
+                <tr>
+                    <th scope="row">Notification Type</th>
+                    <td>
+                        <select @bind="_setNotificationType">
+                            @foreach (KeyValuePair<NotificationType, SupportedNotificationEvents?> kvp in CommandClass.SupportedNotificationEvents)
+                            {
+                                <option value="@kvp.Key">@kvp.Key</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Notification Status</th>
+                    <td>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input"
+                                   type="radio"
+                                   name="setNotificationStatus"
+                                   id="setNotificationStatusEnabled"
+                                   checked
+                                   @onchange="@(() => { _setNotificationStatus = true; })">
+                            <label class="form-check-label" for="setNotificationStatusEnabled">
+                                Enabled
+                            </label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input"
+                                   type="radio"
+                                   name="setNotificationStatus"
+                                   id="setNotificationStatusDisabled"
+                                   @onchange="@(() => { _setNotificationStatus = false; })">
+                            <label class="form-check-label" for="setNotificationStatusDisabled">
+                                Disabled
+                            </label>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="SetAsync">Set</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(NotificationCommand.SupportedGet).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get Supported</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetSupportedAsync">Get Supported</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(NotificationCommand.EventSupportedGet).GetValueOrDefault() && CommandClass.SupportedNotifications.HasValue)
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get Event Supported</th>
+                </tr>
+                <tr>
+                    <th scope="row">Notification Type</th>
+                    <td>
+                        <select @bind="_getEventSupportedNotificationType">
+                            @foreach (NotificationType notificationType in CommandClass.SupportedNotifications.Value.SupportedNotificationTypes)
+                            {
+                                <option value="@notificationType">@notificationType</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetEventSupportedAsync">Get Event Supported</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+    </table>
+}
+
+@code {
+    // Get V1
+    private byte _getAlarmType;
+
+    // Get
+    private NotificationType _getNotificationType;
+    private byte? _getNotificationEvent;
+
+    // Set
+    private NotificationType _setNotificationType;
+    private bool _setNotificationStatus;
+
+    // GetEventSupported
+    private NotificationType _getEventSupportedNotificationType;
+
+    [Parameter]
+    public NotificationCommandClass? CommandClass { get; set; }
+
+    private async Task GetV1Async()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetV1Async(_getAlarmType, CancellationToken.None),
+            nameof(CommandClass.GetV1Async));
+
+    private async Task GetAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetAsync(_getNotificationType, _getNotificationEvent, CancellationToken.None),
+            nameof(CommandClass.GetAsync));
+
+    private async Task SetAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.SetAsync(_setNotificationType, _setNotificationStatus, CancellationToken.None),
+            nameof(CommandClass.SetAsync));
+
+    private async Task GetSupportedAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetSupportedAsync(CancellationToken.None),
+            nameof(CommandClass.GetSupportedAsync));
+
+    private async Task GetEventSupportedAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetEventSupportedAsync(_getEventSupportedNotificationType, CancellationToken.None),
+            nameof(CommandClass.GetEventSupportedAsync));
+}

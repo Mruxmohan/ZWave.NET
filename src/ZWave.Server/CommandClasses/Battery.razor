@@ -1,5 +1,9 @@
 ﻿@using ZWave.CommandClasses
 
+@inherits CommandClassComponentBase
+
+<Error Message="@ErrorMessage" Exception="@ErrorException" />
+
 @if (CommandClass != null)
 {
     <table class="table table-striped">
@@ -104,10 +108,50 @@
                 </tr>
             </tbody>
         }
+
+        @if (CommandClass.IsCommandSupported(BatteryCommand.Get).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetAsync">Get</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(BatteryCommand.HealthGet).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get Health</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetHealthAsync">Get Health</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
     </table>
 }
 
 @code {
     [Parameter]
     public BatteryCommandClass? CommandClass { get; set; }
+
+    private async Task GetAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetAsync(CancellationToken.None),
+            nameof(CommandClass.GetAsync));
+
+    private async Task GetHealthAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetHealthAsync(CancellationToken.None),
+            nameof(CommandClass.GetHealthAsync));
 }

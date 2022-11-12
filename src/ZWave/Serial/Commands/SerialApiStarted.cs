@@ -122,7 +122,9 @@ internal struct SerialApiStartedRequest : ICommand<SerialApiStartedRequest>
     /// Gets additional supported protocols by the Z-Wave API module.
     /// </summary>
     public SerialApiStartedSupportedProtocols SupportedProtocols
-        => (SerialApiStartedSupportedProtocols)Frame.CommandParameters.Span[6 + CommandClassesLength];
+        => Frame.CommandParameters.Length >= 7 + CommandClassesLength
+            ? (SerialApiStartedSupportedProtocols)Frame.CommandParameters.Span[6 + CommandClassesLength]
+            : 0x00;
 
     public static SerialApiStartedRequest Create(DataFrame frame) => new SerialApiStartedRequest(frame);
 }

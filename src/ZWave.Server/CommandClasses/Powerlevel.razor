@@ -1,0 +1,197 @@
+﻿@using ZWave.CommandClasses
+
+@inherits CommandClassComponentBase
+
+@inject Driver Driver
+
+<Error Message="@ErrorMessage" Exception="@ErrorException" />
+
+@if (CommandClass != null)
+{
+    <table class="table table-striped">
+        @if (CommandClass.State.HasValue)
+        {
+            PowerlevelState state = CommandClass.State.Value;
+
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">State</th>
+                </tr>
+                <tr>
+                    <th scope="row">Power Level</th>
+                    <td>@state.Powerlevel</td>
+                </tr>
+
+                @if (state.TimeoutInSeconds.HasValue)
+                {
+                    <tr>
+                        <th scope="row">Timeout in Seconds</th>
+                        <td>@state.TimeoutInSeconds.Value</td>
+                    </tr>
+                }
+            </tbody>
+        }
+
+        @if (CommandClass.LastTestResult.HasValue)
+        {
+            PowerlevelTestResult lastTestResult = CommandClass.LastTestResult.Value;
+
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Last Test Result</th>
+                </tr>
+                <tr>
+                    <th scope="row">Node Id</th>
+                    <td>@lastTestResult.NodeId</td>
+                </tr>
+                <tr>
+                    <th scope="row">Status</th>
+                    <td>@lastTestResult.Status</td>
+                </tr>
+                <tr>
+                    <th scope="row">Frame Acknowledged Count</th>
+                    <td>@lastTestResult.FrameAcknowledgedCount</td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(PowerlevelCommand.Set).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Set</th>
+                </tr>
+                <tr>
+                    <th scope="row">Power Level</th>
+                    <td>
+                        <select @bind="_setPowerlevel">
+                            @foreach (ZWave.CommandClasses.Powerlevel powerlevel in Enum.GetValues<ZWave.CommandClasses.Powerlevel>())
+                            {
+                                <option value="@powerlevel">@powerlevel</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Timeout (sec)</th>
+                    <td>
+                        <input type="number" min="@byte.MinValue" max="@byte.MaxValue" @bind="_setTimeoutInSeconds" />
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="SetAsync">Set</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(PowerlevelCommand.Get).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetAsync">Get</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(PowerlevelCommand.TestNodeSet).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Test Node</th>
+                </tr>
+                <tr>
+                    <th scope="row">Node Id</th>
+                    <td>
+                        <select @bind="_testNodeNodeId">
+                            @foreach (KeyValuePair<byte, Node> kvp in Driver.Controller.Nodes)
+                            {
+                                <option value="@kvp.Key">@kvp.Key</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Power Level</th>
+                    <td>
+                        <select @bind="_testNodePowerlevel">
+                            @foreach (ZWave.CommandClasses.Powerlevel powerlevel in Enum.GetValues<ZWave.CommandClasses.Powerlevel>())
+                            {
+                                <option value="@powerlevel">@powerlevel</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Frame Count</th>
+                    <td>
+                        <input type="number" min="@ushort.MinValue" max="@ushort.MaxValue" @bind="_testNodeFrameCount" />
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="TestNodeAsync">Test Node</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(PowerlevelCommand.TestNodeGet).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get Last Test Results</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetLastTestResultsAsync">Get Last Test Results</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+    </table>
+}
+
+@code {
+    // Set
+    private ZWave.CommandClasses.Powerlevel _setPowerlevel;
+    private byte _setTimeoutInSeconds;
+
+    // TestNode
+    private byte _testNodeNodeId;
+    private ZWave.CommandClasses.Powerlevel _testNodePowerlevel;
+    private ushort _testNodeFrameCount;
+
+    [Parameter]
+    public PowerlevelCommandClass? CommandClass { get; set; }
+
+    private async Task SetAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.SetAsync(_setPowerlevel, _setTimeoutInSeconds, CancellationToken.None),
+            nameof(CommandClass.SetAsync));
+
+    private async Task GetAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetAsync(CancellationToken.None),
+            nameof(CommandClass.GetAsync));
+
+    private async Task TestNodeAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.TestNodeAsync(_testNodeNodeId, _testNodePowerlevel, _testNodeFrameCount, CancellationToken.None),
+            nameof(CommandClass.TestNodeAsync));
+
+    private async Task GetLastTestResultsAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetLastTestResultsAsync(CancellationToken.None),
+            nameof(CommandClass.TestNodeAsync));
+}

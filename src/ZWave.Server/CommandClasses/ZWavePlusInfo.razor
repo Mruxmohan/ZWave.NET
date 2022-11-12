@@ -1,12 +1,16 @@
 ﻿@using ZWave.CommandClasses
 
+@inherits CommandClassComponentBase
+
+<Error Message="@ErrorMessage" Exception="@ErrorException" />
+
 @if (CommandClass != null)
 {
-    if (CommandClass.ZWavePlusInfo.HasValue)
-    {
-        var info = CommandClass.ZWavePlusInfo.Value;
+    <table class="table table-striped">
+        @if (CommandClass.ZWavePlusInfo.HasValue)
+        {
+            var info = CommandClass.ZWavePlusInfo.Value;
 
-        <table class="table table-striped">
             <tbody>
                 <tr>
                     <th scope="row">ZWave Plus Version</th>
@@ -29,11 +33,31 @@
                     <td>@info.UserIconType</td>
                 </tr>
             </tbody>
-        </table>
-    }
+        }
+
+        @if (CommandClass.IsCommandSupported(ZWavePlusInfoCommand.Get).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetAsync">Get</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+    </table>
 }
 
 @code {
     [Parameter]
     public ZWavePlusInfoCommandClass? CommandClass { get; set; }
+
+    private async Task GetAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetAsync(CancellationToken.None),
+            nameof(CommandClass.GetAsync));
 }

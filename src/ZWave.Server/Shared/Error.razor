@@ -1,0 +1,18 @@
+﻿@if (Message != null)
+{
+    <div class="alert alert-danger" role="alert">
+        @Message
+        @if (Exception != null)
+        {
+            <pre>@Exception</pre>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string? Message { get; set; }
+
+    [Parameter]
+    public Exception? Exception { get; set; }
+}

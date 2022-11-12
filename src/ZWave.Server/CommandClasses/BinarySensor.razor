@@ -1,5 +1,9 @@
 ﻿@using ZWave.CommandClasses
 
+@inherits CommandClassComponentBase
+
+<Error Message="@ErrorMessage" Exception="@ErrorException" />
+
 @if (CommandClass != null)
 {
     <table class="table table-striped">
@@ -28,10 +32,68 @@
                 }
             </tbody>
         }
+
+        @if (CommandClass.IsCommandSupported(BinarySensorCommand.Get).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get</th>
+                </tr>
+                @if (CommandClass.Version >= 2)
+                {
+                    <tr>
+                        <th scope="row">Sensor Type</th>
+                        <td>
+                            <select @bind="_getSensorType">
+                                <option value=""></option>
+                                @foreach (BinarySensorType sensorType in Enum.GetValues<BinarySensorType>())
+                                {
+                                    <option value="@sensorType">@sensorType</option>
+                                }
+                            </select>
+                        </td>
+                    </tr>
+                }
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetAsync">Get</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(BinarySensorCommand.SupportedGet).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get Supported Sensor Types</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetSupportedSensorTypesAsync">Get Supported Sensor Types</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
     </table>
 }
 
 @code {
+    // Get
+    private BinarySensorType? _getSensorType;
+
     [Parameter]
     public BinarySensorCommandClass? CommandClass { get; set; }
+
+    private async Task GetAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetAsync(_getSensorType, CancellationToken.None),
+            nameof(CommandClass.GetAsync));
+
+    private async Task GetSupportedSensorTypesAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetSupportedSensorTypesAsync(CancellationToken.None),
+            nameof(CommandClass.GetSupportedSensorTypesAsync));
 }

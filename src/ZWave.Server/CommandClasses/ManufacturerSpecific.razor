@@ -1,5 +1,9 @@
 ﻿@using ZWave.CommandClasses
 
+@inherits CommandClassComponentBase
+
+<Error Message="@ErrorMessage" Exception="@ErrorException" />
+
 @if (CommandClass != null)
 {
     <table class="table table-striped">
@@ -41,10 +45,64 @@
                 }
             </tbody>
         }
+
+        @if (CommandClass.IsCommandSupported(ManufacturerSpecificCommand.Get).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get</th>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetAsync">Get</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
+
+        @if (CommandClass.IsCommandSupported(ManufacturerSpecificCommand.DeviceSpecificGet).GetValueOrDefault())
+        {
+            <tbody>
+                <tr>
+                    <th scope="rowgroup" colspan="2">Get Device Id</th>
+                </tr>
+                <tr>
+                    <th scope="row">Device Id Type</th>
+                    <td>
+                        <select @bind="_deviceIdType">
+                            @foreach (ManufacturerSpecificDeviceIdType deviceIdType in Enum.GetValues<ManufacturerSpecificDeviceIdType>())
+                            {
+                                <option value="@deviceIdType">@deviceIdType</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button @onclick="GetDeviceIdAsync">Get Device Id</button>
+                    </td>
+                </tr>
+            </tbody>
+        }
     </table>
 }
 
 @code {
+    // GetDeviceId
+    private ManufacturerSpecificDeviceIdType _deviceIdType;
+
     [Parameter]
     public ManufacturerSpecificCommandClass? CommandClass { get; set; }
+
+    private async Task GetAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetAsync(CancellationToken.None),
+            nameof(CommandClass.GetAsync));
+
+    private async Task GetDeviceIdAsync()
+        => await RunSafelyAsync(
+            async () => await CommandClass!.GetDeviceIdAsync(_deviceIdType, CancellationToken.None),
+            nameof(CommandClass.GetDeviceIdAsync));
 }

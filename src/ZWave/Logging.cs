@@ -35,20 +35,20 @@ internal static partial class Logging
     [LoggerMessage(
         EventId = 104,
         Level = LogLevel.Trace,
-        Message = "Received partial Serial API data frame with length {length}")]
-    public static partial void LogSerialApiPartialDataFrameReceived(this ILogger logger, long length);
+        Message = "Received Serial API frame: {frame}")]
+    public static partial void LogSerialApiFrameReceived(this ILogger logger, Frame frame);
 
     [LoggerMessage(
         EventId = 105,
         Level = LogLevel.Trace,
-        Message = "Received Serial API frame: {frame}")]
-    public static partial void LogSerialApiFrameReceived(this ILogger logger, Frame frame);
+        Message = "Received Serial API data frame: {frame}")]
+    public static partial void LogSerialApiDataFrameReceived(this ILogger logger, DataFrame frame);
 
     [LoggerMessage(
         EventId = 106,
         Level = LogLevel.Trace,
         Message = "Received invalid Serial API data frame: {frame}")]
-    public static partial void LogSerialApiInvalidDataFrame(this ILogger logger, DataFrame frame);
+    public static partial void LogSerialApiInvalidDataFrameReceived(this ILogger logger, DataFrame frame);
 
     [LoggerMessage(
         EventId = 107,

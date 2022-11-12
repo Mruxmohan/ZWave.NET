@@ -219,7 +219,7 @@ public sealed class PowerlevelCommandClass : CommandClass<PowerlevelCommand>
         return LastTestResult;
     }
 
-    protected override Task InterviewCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    internal override Task InterviewAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     protected override void ProcessCommandCore(CommandClassFrame frame)
     {

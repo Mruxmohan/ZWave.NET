@@ -101,7 +101,7 @@ public sealed class BinarySensorCommandClass : CommandClass<BinarySensorCommand>
         return SupportedSensorTypes!;
     }
 
-    protected override async Task InterviewCoreAsync(CancellationToken cancellationToken)
+    internal override async Task InterviewAsync(CancellationToken cancellationToken)
     {
         if (IsCommandSupported(BinarySensorCommand.SupportedGet).GetValueOrDefault())
         {
